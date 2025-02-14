@@ -51,6 +51,16 @@ void displayJobApplications(database &db)
 // Function to remove a job application by description
 void removeJobApplication(database &db)
 {
+    // Check if the database is empty
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications;" >> count;
+
+    if (count == 0)
+    {
+        cout << "Error: DB is empty. Cannot remove entries.\n";
+        return;
+    }
+
     // Display all job applications with their descriptions
     cout << "List of Job Applications:\n";
     db << "SELECT id, description FROM job_applications;" >> [](int id, string description)
@@ -65,7 +75,6 @@ void removeJobApplication(database &db)
     cin.ignore(); // Ignore the newline character left by cin
 
     // Check if the ID exists
-    int count = 0;
     db << "SELECT COUNT(*) FROM job_applications WHERE id = ?;"
        << id >>
         count;
