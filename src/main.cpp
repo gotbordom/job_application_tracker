@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <limits>
 #include <sqlite_modern_cpp.h>
 
 using namespace std;
@@ -47,6 +48,14 @@ void displayJobApplications(database &db)
     };
 }
 
+// Function to remove a job application by ID
+void removeJobApplication(database &db, int id)
+{
+    db << "DELETE FROM job_applications WHERE id = ?;"
+       << id;
+    cout << "Job application removed successfully!\n";
+}
+
 int main()
 {
     try
@@ -63,9 +72,19 @@ int main()
             cout << "1. Add New Job Application\n"
                  << "2. Update Job Application Status\n"
                  << "3. View All Job Applications\n"
-                 << "4. Exit\n"
+                 << "4. Remove Job Application\n"
+                 << "5. Exit\n"
                  << "Enter your choice: ";
-            cin >> choice;
+
+            // Check if the input is a valid integer
+            if (!(cin >> choice))
+            {
+                cin.clear();                                         // Clear the error flag
+                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discard invalid input
+                cout << "Error: Invalid Input. Please enter a number between 1 and 5.\n\n";
+                continue;
+            }
+
             cin.ignore(); // Ignore the newline character left by cin
 
             if (choice == 1)
@@ -98,11 +117,20 @@ int main()
             }
             else if (choice == 4)
             {
+                int id;
+                cout << "Enter Job Application ID to remove: ";
+                cin >> id;
+                cin.ignore(); // Ignore the newline character left by cin
+
+                removeJobApplication(db, id);
+            }
+            else if (choice == 5)
+            {
                 break;
             }
             else
             {
-                cout << "Invalid choice. Please try again.\n";
+                cout << "Error: Invalid Input. Please enter a number between 1 and 5.\n\n";
             }
         }
     }
