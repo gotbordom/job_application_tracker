@@ -1,12 +1,15 @@
 #include <iostream>
 #include <string>
-#include <limits>
 #include <iomanip>
 #include <ctime>
+#include <fstream>
+#include <limits>
+#include <filesystem>
 #include <sqlite_modern_cpp.h>
 
 using namespace std;
 using namespace sqlite;
+namespace fs = filesystem; // For filesystem operations
 
 // Function to check if a date string is in YYYY-MM-DD format
 bool isValidDate(const string &date)
@@ -233,6 +236,123 @@ void removeJobApplication(database &db)
     }
 }
 
+// Function to remove all entries from the database
+void removeAllEntries(database &db)
+{
+    // Check if the database is empty
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications;" >> count;
+
+    if (count == 0)
+    {
+        cout << "Error: DB is already empty.\n";
+        return;
+    }
+
+    // Ask for confirmation
+    string confirmation;
+    cout << "Are you sure you want to delete ALL job applications? (yes/no): ";
+    getline(cin, confirmation);
+
+    if (confirmation == "yes" || confirmation == "y")
+    {
+        db << "DELETE FROM job_applications;";
+        cout << "All job applications removed successfully!\n";
+    }
+    else
+    {
+        cout << "Deletion canceled.\n";
+    }
+}
+
+// Function to export all entries to a CSV file
+void exportToCSV(database &db)
+{
+    // Check if the database is empty
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications;" >> count;
+
+    if (count == 0)
+    {
+        cout << "Error: DB is empty. No entries to export.\n";
+        return;
+    }
+
+    // Ask for the CSV file name
+    string filename;
+    cout << "Enter the name of the CSV file to export to (e.g., job_applications.csv): ";
+    getline(cin, filename);
+
+    // Get the absolute path of the file
+    fs::path filePath = fs::absolute(filename);
+
+    // Open the CSV file for writing
+    ofstream csvFile(filePath);
+    if (!csvFile.is_open())
+    {
+        cout << "Error: Could not open file " << filePath << " for writing.\n";
+        return;
+    }
+
+    // Write the CSV header
+    csvFile << "ID,Description,Date,Status\n";
+
+    // Write all entries to the CSV file
+    db << "SELECT id, description, date, status FROM job_applications;" >> [&](int id, string description, string date, string status)
+    {
+        csvFile << id << "," << description << "," << date << "," << status << "\n";
+    };
+
+    csvFile.close();
+    cout << "Job applications exported to " << filePath << " successfully!\n";
+}
+
+// Function to import entries from a CSV file
+void importFromCSV(database &db)
+{
+    // Ask for the CSV file name
+    string filename;
+    cout << "Enter the name of the CSV file to import from (e.g., job_applications.csv): ";
+    getline(cin, filename);
+
+    // Get the absolute path of the file
+    fs::path filePath = fs::absolute(filename);
+
+    // Open the CSV file for reading
+    ifstream csvFile(filePath);
+    if (!csvFile.is_open())
+    {
+        cout << "Error: Could not open file " << filePath << " for reading.\n";
+        return;
+    }
+
+    // Read the CSV file line by line
+    string line;
+    getline(csvFile, line); // Skip the header line
+    while (getline(csvFile, line))
+    {
+        size_t pos1 = line.find(',');
+        size_t pos2 = line.find(',', pos1 + 1);
+        size_t pos3 = line.find(',', pos2 + 1);
+
+        if (pos1 == string::npos || pos2 == string::npos || pos3 == string::npos)
+        {
+            cout << "Error: Invalid CSV format in line: " << line << "\n";
+            continue;
+        }
+
+        string description = line.substr(pos1 + 1, pos2 - pos1 - 1);
+        string date = line.substr(pos2 + 1, pos3 - pos2 - 1);
+        string status = line.substr(pos3 + 1);
+
+        // Add the job application to the database
+        addJobApplication(db, description, date, status);
+    }
+
+    csvFile.close();
+    cout << "Job applications imported from " << filePath << " successfully!\n";
+}
+
 int main()
 {
     try
@@ -250,7 +370,10 @@ int main()
                  << "2. Update Job Application Status\n"
                  << "3. View All Job Applications\n"
                  << "4. Remove Job Application\n"
-                 << "5. Exit\n"
+                 << "5. Remove All Entries\n"
+                 << "6. Export to CSV\n"
+                 << "7. Import from CSV\n"
+                 << "8. Exit\n"
                  << "Enter your choice: ";
 
             // Check if the input is a valid integer
@@ -258,7 +381,7 @@ int main()
             {
                 cin.clear();                                         // Clear the error flag
                 cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discard invalid input
-                cout << "Error: Invalid Input. Please enter a number between 1 and 5.\n\n";
+                cout << "Error: Invalid Input. Please enter a number between 1 and 8.\n\n";
                 continue;
             }
 
@@ -290,11 +413,23 @@ int main()
             }
             else if (choice == 5)
             {
+                removeAllEntries(db);
+            }
+            else if (choice == 6)
+            {
+                exportToCSV(db);
+            }
+            else if (choice == 7)
+            {
+                importFromCSV(db);
+            }
+            else if (choice == 8)
+            {
                 break;
             }
             else
             {
-                cout << "Error: Invalid Input. Please enter a number between 1 and 5.\n\n";
+                cout << "Error: Invalid Input. Please enter a number between 1 and 8.\n\n";
             }
         }
     }
