@@ -151,7 +151,7 @@ void updateJobApplication(database &db)
 
     // Ask for the new status
     string newStatus;
-    cout << "Enter New Status: ";
+    cout << "Enter New Status (e.g., Applied, Interviewing, Rejected): ";
     getline(cin, newStatus);
 
     // Update the status
