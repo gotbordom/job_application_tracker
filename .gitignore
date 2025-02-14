@@ -1,0 +1,31 @@
+# Ignore the build directory
+/build/
+
+# Ignore CMake-generated files
+CMakeFiles/
+CMakeScripts/
+Makefile
+
+# Ignore generated executables and libraries
+/JobTracker
+
+# Ignore IDE-specific files (if applicable)
+.vscode/
+.idea/
+*.user
+*.suo
+*.ncb
+*.sdf
+
+# Ignore dependency downloads (if using FetchContent)
+/external/
+
+# Ignore temporary files
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Ignore log files
+*.log
