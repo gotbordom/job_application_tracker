@@ -1,10 +1,57 @@
 #include <iostream>
 #include <string>
 #include <limits>
+#include <iomanip>
+#include <ctime>
 #include <sqlite_modern_cpp.h>
 
 using namespace std;
 using namespace sqlite;
+
+// Function to check if a date string is in YYYY-MM-DD format
+bool isValidDate(const string &date)
+{
+    if (date.empty())
+    {
+        return true; // Empty date is allowed (will default to today)
+    }
+
+    if (date.length() != 10 || date[4] != '-' || date[7] != '-')
+    {
+        return false; // Incorrect format
+    }
+
+    // Check if the year, month, and day are valid
+    int year, month, day;
+    try
+    {
+        year = stoi(date.substr(0, 4));
+        month = stoi(date.substr(5, 2));
+        day = stoi(date.substr(8, 2));
+    }
+    catch (...)
+    {
+        return false; // Invalid conversion
+    }
+
+    // Basic validation for year, month, and day
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+// Function to get today's date in YYYY-MM-DD format
+string getTodayDate()
+{
+    time_t now = time(nullptr);
+    tm tm = *localtime(&now);
+    char buffer[11];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d", &tm);
+    return string(buffer);
+}
 
 // Function to create the database table
 void createTable(database &db)
@@ -20,9 +67,24 @@ void createTable(database &db)
 // Function to add a new job application
 void addJobApplication(database &db, const string &description, const string &date, const string &status)
 {
+    string finalDate = date;
+
+    // If the date is empty, default to today's date
+    if (finalDate.empty())
+    {
+        finalDate = getTodayDate();
+    }
+
+    // Validate the date format
+    if (!isValidDate(finalDate))
+    {
+        cout << "Error: Invalid date format. Please use YYYY-MM-DD or leave empty for today's date.\n";
+        return;
+    }
+
     db << "INSERT INTO job_applications (description, date, status) VALUES (?, ?, ?);"
        << description
-       << date
+       << finalDate
        << status;
     cout << "Job application added successfully!\n";
 }
@@ -207,7 +269,7 @@ int main()
                 string description, date, status;
                 cout << "Enter Job Description: ";
                 getline(cin, description);
-                cout << "Enter Date (YYYY-MM-DD): ";
+                cout << "Enter Date (YYYY-MM-DD or leave empty for today): ";
                 getline(cin, date);
                 cout << "Enter Status (e.g., Applied, Interviewing, Rejected): ";
                 getline(cin, status);
