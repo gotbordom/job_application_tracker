@@ -87,13 +87,29 @@ void addJobApplication(database &db, const string &description, const string &da
         return;
     }
 
-    db << "INSERT INTO job_applications (description, date, status, url, notes) VALUES (?, ?, ?, ?, ?);"
-       << description
-       << finalDate
-       << status
-       << url
-       << notes;
-    cout << "Job application added successfully!\n";
+    // Debugging: Print the values being inserted
+    cout << "Debug: Inserting job application with the following details:\n"
+         << "Description: " << description << "\n"
+         << "Date: " << finalDate << "\n"
+         << "Status: " << status << "\n"
+         << "URL: " << url << "\n"
+         << "Notes: " << notes << "\n";
+
+    try
+    {
+        db << "INSERT INTO job_applications (description, date, status, url, notes) VALUES (?, ?, ?, ?, ?);"
+           << description
+           << finalDate
+           << status
+           << url
+           << notes;
+        cout << "Job application added successfully!\n";
+    }
+    catch (const exception &e)
+    {
+        cerr << "Error: " << e.what() << "\n";
+        cerr << "Failed to add job application. Please check the input data.\n";
+    }
 }
 
 // Function to check if an entry exists and print its details
