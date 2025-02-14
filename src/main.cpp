@@ -48,12 +48,61 @@ void displayJobApplications(database &db)
     };
 }
 
-// Function to remove a job application by ID
-void removeJobApplication(database &db, int id)
+// Function to remove a job application by description
+void removeJobApplication(database &db)
 {
-    db << "DELETE FROM job_applications WHERE id = ?;"
-       << id;
-    cout << "Job application removed successfully!\n";
+    // Display all job applications with their descriptions
+    cout << "List of Job Applications:\n";
+    db << "SELECT id, description FROM job_applications;" >> [](int id, string description)
+    {
+        cout << "ID: " << id << " | Description: " << description << "\n";
+    };
+
+    // Ask the user to select an ID to remove
+    int id;
+    cout << "Enter the ID of the job application you want to remove: ";
+    cin >> id;
+    cin.ignore(); // Ignore the newline character left by cin
+
+    // Check if the ID exists
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications WHERE id = ?;"
+       << id >>
+        count;
+
+    if (count == 0)
+    {
+        cout << "Error: Job application with ID " << id << " does not exist.\n";
+    }
+    else
+    {
+        // Display the job application details
+        db << "SELECT description, date, status FROM job_applications WHERE id = ?;"
+           << id >>
+            [](string description, string date, string status)
+        {
+            cout << "You are about to delete the following job application:\n"
+                 << "Description: " << description << "\n"
+                 << "Date: " << date << "\n"
+                 << "Status: " << status << "\n";
+        };
+
+        // Ask for confirmation
+        string confirmation;
+        cout << "Are you sure you want to delete this job application? (yes/no): ";
+        getline(cin, confirmation);
+
+        if (confirmation == "yes" || confirmation == "y")
+        {
+            db << "DELETE FROM job_applications WHERE id = ?;"
+               << id;
+            cout << "Job application removed successfully!\n";
+        }
+        else
+        {
+            cout << "Deletion canceled.\n";
+        }
+    }
 }
 
 int main()
@@ -117,12 +166,7 @@ int main()
             }
             else if (choice == 4)
             {
-                int id;
-                cout << "Enter Job Application ID to remove: ";
-                cin >> id;
-                cin.ignore(); // Ignore the newline character left by cin
-
-                removeJobApplication(db, id);
+                removeJobApplication(db);
             }
             else if (choice == 5)
             {
