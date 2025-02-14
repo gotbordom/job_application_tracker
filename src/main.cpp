@@ -27,9 +27,72 @@ void addJobApplication(database &db, const string &description, const string &da
     cout << "Job application added successfully!\n";
 }
 
-// Function to update the status of a job application
-void updateJobApplication(database &db, int id, const string &newStatus)
+// Function to check if an entry exists and print its details
+bool checkAndPrintEntryDetails(database &db, int id)
 {
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications WHERE id = ?;"
+       << id >>
+        count;
+
+    if (count == 0)
+    {
+        cout << "Error: Job application with ID " << id << " does not exist.\n";
+        return false;
+    }
+
+    // Display the job application details
+    db << "SELECT description, date, status FROM job_applications WHERE id = ?;"
+       << id >>
+        [](string description, string date, string status)
+    {
+        cout << "Job Application Details:\n"
+             << "Description: " << description << "\n"
+             << "Date: " << date << "\n"
+             << "Status: " << status << "\n";
+    };
+
+    return true;
+}
+
+// Function to update the status of a job application
+void updateJobApplication(database &db)
+{
+    // Check if the database is empty
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications;" >> count;
+
+    if (count == 0)
+    {
+        cout << "Error: DB is empty. Cannot update entries.\n";
+        return;
+    }
+
+    // Display all job applications with their descriptions
+    cout << "List of Job Applications:\n";
+    db << "SELECT id, description FROM job_applications;" >> [](int id, string description)
+    {
+        cout << "ID: " << id << " | Description: " << description << "\n";
+    };
+
+    // Ask the user to select an ID to update
+    int id;
+    cout << "Enter the ID of the job application you want to update: ";
+    cin >> id;
+    cin.ignore(); // Ignore the newline character left by cin
+
+    // Check if the ID exists and print details
+    if (!checkAndPrintEntryDetails(db, id))
+    {
+        return;
+    }
+
+    // Ask for the new status
+    string newStatus;
+    cout << "Enter New Status: ";
+    getline(cin, newStatus);
+
+    // Update the status
     db << "UPDATE job_applications SET status = ? WHERE id = ?;"
        << newStatus
        << id;
@@ -39,6 +102,17 @@ void updateJobApplication(database &db, int id, const string &newStatus)
 // Function to display all job applications
 void displayJobApplications(database &db)
 {
+    // Check if the database is empty
+    int count = 0;
+    db << "SELECT COUNT(*) FROM job_applications;" >> count;
+
+    if (count == 0)
+    {
+        cout << "Error: DB is empty. No entries to display.\n";
+        return;
+    }
+
+    // Display all job applications
     db << "SELECT id, description, date, status FROM job_applications;" >> [](int id, string description, string date, string status)
     {
         cout << "ID: " << id << "\n"
@@ -74,43 +148,26 @@ void removeJobApplication(database &db)
     cin >> id;
     cin.ignore(); // Ignore the newline character left by cin
 
-    // Check if the ID exists
-    db << "SELECT COUNT(*) FROM job_applications WHERE id = ?;"
-       << id >>
-        count;
-
-    if (count == 0)
+    // Check if the ID exists and print details
+    if (!checkAndPrintEntryDetails(db, id))
     {
-        cout << "Error: Job application with ID " << id << " does not exist.\n";
+        return;
+    }
+
+    // Ask for confirmation
+    string confirmation;
+    cout << "Are you sure you want to delete this job application? (yes/no): ";
+    getline(cin, confirmation);
+
+    if (confirmation == "yes" || confirmation == "y")
+    {
+        db << "DELETE FROM job_applications WHERE id = ?;"
+           << id;
+        cout << "Job application removed successfully!\n";
     }
     else
     {
-        // Display the job application details
-        db << "SELECT description, date, status FROM job_applications WHERE id = ?;"
-           << id >>
-            [](string description, string date, string status)
-        {
-            cout << "You are about to delete the following job application:\n"
-                 << "Description: " << description << "\n"
-                 << "Date: " << date << "\n"
-                 << "Status: " << status << "\n";
-        };
-
-        // Ask for confirmation
-        string confirmation;
-        cout << "Are you sure you want to delete this job application? (yes/no): ";
-        getline(cin, confirmation);
-
-        if (confirmation == "yes" || confirmation == "y")
-        {
-            db << "DELETE FROM job_applications WHERE id = ?;"
-               << id;
-            cout << "Job application removed successfully!\n";
-        }
-        else
-        {
-            cout << "Deletion canceled.\n";
-        }
+        cout << "Deletion canceled.\n";
     }
 }
 
@@ -159,15 +216,7 @@ int main()
             }
             else if (choice == 2)
             {
-                int id;
-                string newStatus;
-                cout << "Enter Job Application ID to update: ";
-                cin >> id;
-                cin.ignore(); // Ignore the newline character left by cin
-                cout << "Enter New Status: ";
-                getline(cin, newStatus);
-
-                updateJobApplication(db, id, newStatus);
+                updateJobApplication(db);
             }
             else if (choice == 3)
             {
