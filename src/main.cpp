@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string>
+#include <limits>
 #include <iomanip>
 #include <ctime>
 #include <fstream>
-#include <limits>
 #include <filesystem>
 #include <sqlite_modern_cpp.h>
 
@@ -63,12 +63,14 @@ void createTable(database &db)
           "   id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "   description TEXT NOT NULL, "
           "   date TEXT NOT NULL, "
-          "   status TEXT NOT NULL "
+          "   status TEXT NOT NULL, "
+          "   url TEXT, "  // New column for job description URL
+          "   notes TEXT " // New column for notes
           ");";
 }
 
 // Function to add a new job application
-void addJobApplication(database &db, const string &description, const string &date, const string &status)
+void addJobApplication(database &db, const string &description, const string &date, const string &status, const string &url = "", const string &notes = "")
 {
     string finalDate = date;
 
@@ -85,10 +87,12 @@ void addJobApplication(database &db, const string &description, const string &da
         return;
     }
 
-    db << "INSERT INTO job_applications (description, date, status) VALUES (?, ?, ?);"
+    db << "INSERT INTO job_applications (description, date, status, url, notes) VALUES (?, ?, ?, ?, ?);"
        << description
        << finalDate
-       << status;
+       << status
+       << url
+       << notes;
     cout << "Job application added successfully!\n";
 }
 
@@ -107,14 +111,16 @@ bool checkAndPrintEntryDetails(database &db, int id)
     }
 
     // Display the job application details
-    db << "SELECT description, date, status FROM job_applications WHERE id = ?;"
+    db << "SELECT description, date, status, url, notes FROM job_applications WHERE id = ?;"
        << id >>
-        [](string description, string date, string status)
+        [](string description, string date, string status, string url, string notes)
     {
         cout << "Job Application Details:\n"
              << "Description: " << description << "\n"
              << "Date: " << date << "\n"
-             << "Status: " << status << "\n";
+             << "Status: " << status << "\n"
+             << "URL: " << (url.empty() ? "N/A" : url) << "\n"
+             << "Notes: " << (notes.empty() ? "N/A" : notes) << "\n";
     };
 
     return true;
@@ -178,12 +184,14 @@ void displayJobApplications(database &db)
     }
 
     // Display all job applications
-    db << "SELECT id, description, date, status FROM job_applications;" >> [](int id, string description, string date, string status)
+    db << "SELECT id, description, date, status, url, notes FROM job_applications;" >> [](int id, string description, string date, string status, string url, string notes)
     {
         cout << "ID: " << id << "\n"
              << "Description: " << description << "\n"
              << "Date: " << date << "\n"
-             << "Status: " << status << "\n\n";
+             << "Status: " << status << "\n"
+             << "URL: " << (url.empty() ? "N/A" : url) << "\n"
+             << "Notes: " << (notes.empty() ? "N/A" : notes) << "\n\n";
     };
 }
 
@@ -295,12 +303,12 @@ void exportToCSV(database &db)
     }
 
     // Write the CSV header
-    csvFile << "ID,Description,Date,Status\n";
+    csvFile << "ID,Description,Date,Status,URL,Notes\n";
 
     // Write all entries to the CSV file
-    db << "SELECT id, description, date, status FROM job_applications;" >> [&](int id, string description, string date, string status)
+    db << "SELECT id, description, date, status, url, notes FROM job_applications;" >> [&](int id, string description, string date, string status, string url, string notes)
     {
-        csvFile << id << "," << description << "," << date << "," << status << "\n";
+        csvFile << id << "," << description << "," << date << "," << status << "," << url << "," << notes << "\n";
     };
 
     csvFile.close();
@@ -334,8 +342,10 @@ void importFromCSV(database &db)
         size_t pos1 = line.find(',');
         size_t pos2 = line.find(',', pos1 + 1);
         size_t pos3 = line.find(',', pos2 + 1);
+        size_t pos4 = line.find(',', pos3 + 1);
+        size_t pos5 = line.find(',', pos4 + 1);
 
-        if (pos1 == string::npos || pos2 == string::npos || pos3 == string::npos)
+        if (pos1 == string::npos || pos2 == string::npos || pos3 == string::npos || pos4 == string::npos || pos5 == string::npos)
         {
             cout << "Error: Invalid CSV format in line: " << line << "\n";
             continue;
@@ -343,10 +353,12 @@ void importFromCSV(database &db)
 
         string description = line.substr(pos1 + 1, pos2 - pos1 - 1);
         string date = line.substr(pos2 + 1, pos3 - pos2 - 1);
-        string status = line.substr(pos3 + 1);
+        string status = line.substr(pos3 + 1, pos4 - pos3 - 1);
+        string url = line.substr(pos4 + 1, pos5 - pos4 - 1);
+        string notes = line.substr(pos5 + 1);
 
         // Add the job application to the database
-        addJobApplication(db, description, date, status);
+        addJobApplication(db, description, date, status, url, notes);
     }
 
     csvFile.close();
@@ -389,15 +401,19 @@ int main()
 
             if (choice == 1)
             {
-                string description, date, status;
+                string description, date, status, url, notes;
                 cout << "Enter Job Description: ";
                 getline(cin, description);
                 cout << "Enter Date (YYYY-MM-DD or leave empty for today): ";
                 getline(cin, date);
                 cout << "Enter Status (e.g., Applied, Interviewing, Rejected): ";
                 getline(cin, status);
+                cout << "Enter Job Description URL (optional): ";
+                getline(cin, url);
+                cout << "Enter Notes (optional): ";
+                getline(cin, notes);
 
-                addJobApplication(db, description, date, status);
+                addJobApplication(db, description, date, status, url, notes);
             }
             else if (choice == 2)
             {
